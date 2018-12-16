@@ -17,9 +17,10 @@
 
 class DemoCodeGenerator(object):
 	def __init__(self,optimise = False):
-		self.addr = 0x1000
-		self.strAddr = 0x2000
-		self.varAddr = 0x3000
+		self.addr = 0x1000						# code space
+		self.strAddr = 0x2000 					# initialised data
+		self.memoryAddr = 0x3000 				# uninitialised data
+		self.dataAddr = 0x4000					# initialised data
 		self.opNames = {}
 		for op in "+add;-sub;*mult;/div;%mod;&and;|or;^xor;>grt;=equ;<less;#neq".split(";"):
 			self.opNames[op[0]] = op[1:]
@@ -119,10 +120,18 @@ class DemoCodeGenerator(object):
 		print("${0:06x} : jnz   ${1:06x}".format(self.addr+1,loopAddress))
 		self.addr += 2
 	#
-	#		Allocate variable memory.
+	#		Allocate variable memory from non-initialised space.
 	#
 	def allocate(self,size):
-		address = self.varAddr
-		self.varAddr += size
+		address = self.memoryAddr
+		self.memoryAddr += size
 		return address
-
+	#
+	#		Compile a variable - this has to be in data space, rather than non-initialised space
+	#
+	def compileVariable(self,address):
+		addr = self.dataAddr
+		print("${0:06x} : dw   ${1:04x}".format(self.dataAddr,address))
+		self.dataAddr += 2
+		return addr
+		

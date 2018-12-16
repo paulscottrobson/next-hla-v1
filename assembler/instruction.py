@@ -196,16 +196,12 @@ class InstructionCompiler(object):
 			if identValue == 0 or identValue > 8192:					# check validity of memory reqd.
 				raise AssemblerException("Cannot allocate that amount of memory")
 			identValue = self.codeGenerator.allocate(identValue)		# allocate memory for it.
+			varAddr = self.codeGenerator.compileVariable(identValue)	# create a variable to refer to it.
 			self.parser.expect("]")
-		else:
-			identValue = 0
-			self.parser.put(nextElement)
+		else:															# allocate word space
+			self.parser.put(nextElement)								# (locals)
+			varAddr = self.codeGenerator.allocate(2) 				
 		self.parser.expect(";")
-
-		varAddr = self.codeGenerator.allocate(2)						# Allocate memory space
-		if identValue != 0:
-			self.codeGenerator.loadARegister([False,identValue])		# code to set it up.
-			self.codeGenerator.saveDirect(varAddr)
 																		# add to dictionary.
 		self.dictionary.add(VariableIdentifier(identifier,varAddr,idtype,not isLocal))
 
@@ -214,31 +210,12 @@ if __name__ == "__main__":
 		var test:madeup[12];
 		var fred;
 		var sprites[1024];
+		var return;
 
-		{ locvar = 13;;; glbvar = const1; }
-		glbvar = locvar + fred;
-		locvar!4 = 2;
-		locvar?glbvar = 3;
-		hello(3,locvar!4,const1);
-		if (locvar) { locvar = locvar + 12; }
-		while- (glbvar) { glbvar = glbvar - const1; }
-		{ for (locvar) { hello(0,0,0); } ; glbvar = 142; }
+		proc myproc(a,b,c) {
+			return = a+b+c;
+		}
 	""".split("\n"))
 
 	tx = InstructionCompiler(ElementParser(tas),DemoCodeGenerator(),TestDictionary())
 	tx.compile()
-	print("================================")
-	tx.compile()
-	print("================================")
-	tx.compile()
-	print("================================")
-	tx.compile()
-	print("================================")
-	tx.compile()
-	print("================================")
-	tx.compile()
-	print("================================")
-	tx.compile()
-	print("================================")
-	tx.compile()
-
