@@ -37,9 +37,11 @@ class InstructionCompiler(object):
 	def compile(self):
 		element = self.parser.get()
 		#
-		#		TODO: VAR
+		#		Variable
 		#
-
+		if element == "var":
+			self.createVariable(True)
+			return
 		#
 		#		If / While. While is an If with a jump up to the top.
 		#
@@ -169,11 +171,52 @@ class InstructionCompiler(object):
 		forLoop = self.codeGenerator.forTopCode(index.getValue() if index is not None else None)
 		self.compile()													# code that's repeated
 		self.codeGenerator.forBottomCode(forLoop)						# bottom of loop.
+	#
+	#		Define a variable from the stream.
+	#
+	def createVariable(self,isLocal):
+		identifier = self.parser.get() 									# get the identifier name.
+		if identifier == "" or identifier[0] < 'a' or identifier[0] > 'z':
+			raise AssemblerException("Bad identifier name "+identifier)
+		if identifier.find(":") >= 0:									# <name>:<type>
+			identifier = identifier.split(":")
+			if len(identifier) != 2 or identifier[0] == "" or identifier[1] == "":
+				raise AssemblerException("Bad type identifier")
+			idtype = identifier[1]
+			identifier = identifier[0]
+		else: 															# just name
+			idtype = None
+		nextElement = self.parser.get()
+
+		if nextElement == "[":											# memory allocated ?
+			sizeTerm = self.termCompiler.extract()						# get how much
+			if sizeTerm[0]:												# must be constant
+				raise AssemblerException("Memory allocated must be a constant.")
+			identValue = sizeTerm[1] 									# number of bytes
+			if identValue == 0 or identValue > 8192:					# check validity of memory reqd.
+				raise AssemblerException("Cannot allocate that amount of memory")
+			identValue = self.codeGenerator.allocate(identValue)		# allocate memory for it.
+			self.parser.expect("]")
+		else:
+			identValue = 0
+			self.parser.put(nextElement)
+		self.parser.expect(";")
+
+		varAddr = self.codeGenerator.allocate(2)						# Allocate memory space
+		if identValue != 0:
+			self.codeGenerator.loadARegister([False,identValue])		# code to set it up.
+			self.codeGenerator.saveDirect(varAddr)
+																		# add to dictionary.
+		self.dictionary.add(VariableIdentifier(identifier,varAddr,idtype,not isLocal))
 
 if __name__ == "__main__":
 	tas = TextArrayStream("""
+		var test:madeup[12];
+		var fred;
+		var sprites[1024];
+
 		{ locvar = 13;;; glbvar = const1; }
-		glbvar = locvar + 4;
+		glbvar = locvar + fred;
 		locvar!4 = 2;
 		locvar?glbvar = 3;
 		hello(3,locvar!4,const1);

@@ -24,7 +24,7 @@ class Dictionary(object):
 	#	Add an identifier to the dictionary.
 	#
 	def add(self,identifier):
-		target = self.globals if identifier.isGlobal() else self.Locals # decide where its going
+		target = self.globals if identifier.isGlobal() else self.locals # decide where its going
 		if identifier.getName() in target: 								# check for duplication
 			raise AssemblerException("Duplicate idenifier "+identifier.getName())
 		target[identifier.getName()] = identifier 						# store

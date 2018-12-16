@@ -19,6 +19,7 @@ class DemoCodeGenerator(object):
 	def __init__(self,optimise = False):
 		self.addr = 0x1000
 		self.strAddr = 0x2000
+		self.varAddr = 0x3000
 		self.opNames = {}
 		for op in "+add;-sub;*mult;/div;%mod;&and;|or;^xor;>grt;=equ;<less;#neq".split(";"):
 			self.opNames[op[0]] = op[1:]
@@ -117,4 +118,11 @@ class DemoCodeGenerator(object):
 		print("${0:06x} : pop   a".format(self.addr))					# pop off stack, jump if not done
 		print("${0:06x} : jnz   ${1:06x}".format(self.addr+1,loopAddress))
 		self.addr += 2
+	#
+	#		Allocate variable memory.
+	#
+	def allocate(self,size):
+		address = self.varAddr
+		self.varAddr += size
+		return address
 
