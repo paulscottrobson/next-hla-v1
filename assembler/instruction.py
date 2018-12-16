@@ -16,6 +16,7 @@ from dictionary import *
 from democodegen import *
 from expression import *
 from term import *
+import sys
 
 # ***************************************************************************************
 #
@@ -36,23 +37,35 @@ class InstructionCompiler(object):
 	def compile(self):
 		element = self.parser.get()
 		#
-		#		TODO: IF WHILE FOR code. VAR
+		#		TODO: VAR
 		#
 
 		#
+		#		If / While. While is an If with a jump up to the top.
+		#
+		if element == "while" or element == "if":						# Handle IF/WHILE
+			self.ifWhile(element == "if")
+			return
+		#
+		#		For loop
+		#
+		if element == "for":
+			self.forLoop() 												# Handle FOR loop
+			return
+		#
 		#		Empty instruction
 		#
-		if element == ";":
+		if element == ";":												# Ignore ; on its own
 			return
 		#
 		#		Instruction set grouped with {}
 		#
 		if element == "{":
-			nextElement = self.parser.get()
-			while nextElement != "}":
-				self.parser.put(nextElement)
-				self.compile()
-				nextElement = self.parser.get()				
+			nextElement = self.parser.get() 							# Look at next instruction
+			while nextElement != "}": 									# Keep going till }
+				self.parser.put(nextElement) 							# Shove back
+				self.compile() 											# Compile
+				nextElement = self.parser.get()							# Examine next element.
 			return
 		#
 		#		Check for assignment/procedure call.
@@ -62,14 +75,14 @@ class InstructionCompiler(object):
 		#
 		# 		Get the thing after the element and decide what to do based on it.
 		#
-		nextElement = self.parser.get()
-		self.parser.put(nextElement)
+		nextElement = self.parser.get()									# Get the element after the identifier
+		self.parser.put(nextElement) 									# put them both back
 		self.parser.put(element)
-		if nextElement == "!" or nextElement == "?":
+		if nextElement == "!" or nextElement == "?": 					# handle byte/word indirection
 			self.indirectAssignment()
-		elif nextElement == "=":
+		elif nextElement == "=":										# handle direct assignment
 			self.directAssignment()
-		elif nextElement == "(":
+		elif nextElement == "(":										# handle procedure call.
 			self.procedureCall()
 		else:
 			raise AssemblerException("Syntax error "+element)		
@@ -77,59 +90,105 @@ class InstructionCompiler(object):
 	#		Compile a direct assignment
 	#
 	def directAssignment(self):
-		lExprName = self.parser.get()
-		lExpr = self.dictionary.find(lExprName)
-		if lExpr is None or not isinstance(lExpr,AddressIdentifier):
+		lExprName = self.parser.get()									# identifier to assign to
+		lExpr = self.dictionary.find(lExprName)							# see if it exists
+		if lExpr is None or not isinstance(lExpr,AddressIdentifier): 	# error if not, wrong type
 			raise AssemblerException("Cannot assign to "+lExprName)
-		self.parser.expect("=")
-		self.expressionCompiler.compile()
+		self.parser.expect("=")											# =
+		self.expressionCompiler.compile() 								# some expression
 		self.parser.expect(";")
-		self.codeGenerator.saveDirect(lExpr.getValue())
+		self.codeGenerator.saveDirect(lExpr.getValue())					# save expression result
 	#
 	#		Compile an indirect assignment.
 	#
 	def indirectAssignment(self):
-		lExprName = self.parser.get()
-		lExpr = self.dictionary.find(lExprName)
+		lExprName = self.parser.get() 									# LHS of l-expr
+		lExpr = self.dictionary.find(lExprName) 						# check it
 		if lExpr is None or not isinstance(lExpr,AddressIdentifier):
 			raise AssemblerException("Cannot assign to "+lExprName)
-		operator = self.parser.get()
-		rTerm = self.termCompiler.extract()
-		self.codeGenerator.loadARegister([True,lExpr.getValue()])
-		self.codeGenerator.binaryOperation("+",rTerm)
-		self.codeGenerator.copyToIndex()
-		self.parser.expect("=")
+		operator = self.parser.get() 									# get the operator, already know ! or ?
+		rTerm = self.termCompiler.extract()								# get the next term.
+		self.codeGenerator.loadARegister([True,lExpr.getValue()]) 		# load the LHS in
+		self.codeGenerator.binaryOperation("+",rTerm) 					# add the term to it.
+		self.codeGenerator.copyToIndex() 								# put in index 
+		self.parser.expect("=") 										# do the RHS
 		self.expressionCompiler.compile()
 		self.parser.expect(";")
-		self.codeGenerator.saveIndirect(operator == "!")
+		self.codeGenerator.saveIndirect(operator == "!")				# and save it as byte/word
 	#
 	#		Compile a procedure call
 	#
 	def procedureCall(self):
-		procName = self.parser.get()
+		procName = self.parser.get()									# get proc name, check it
 		proc = self.dictionary.find(procName)
 		if proc is  None or not isinstance(proc,AddressIdentifier):
 			raise AssemblerException("Cannot call "+procName)
-		self.parser.expect("(")
-		for i in range(0,proc.getParameterCount()):
-			self.expressionCompiler.compile()
+		self.parser.expect("(") 										# can't be missed out.
+		for i in range(0,proc.getParameterCount()):						# for each parameter
+			self.expressionCompiler.compile()							# compile and save
 			self.codeGenerator.saveDirect(proc.getParameterBaseAddress()+i*2)
-			if i < proc.getParameterCount()-1:
+			if i < proc.getParameterCount()-1:							# check , if there is one
 				self.parser.expect(",")
-		self.parser.expect(")")
+		self.parser.expect(")")											# end of proc call
 		self.parser.expect(";")
-		self.codeGenerator.compileCall(proc.getValue())
+		self.codeGenerator.compileCall(proc.getValue())					# compile the actual call.
+	#
+	#		Do If/While. While is just If with a loop back at the end :)
+	#
+	def ifWhile(self,isIf):
+		condition = self.parser.get()									# condition, + (>= 0) - (<0) = (=0)
+		if condition == "(":											# if none, default to # (<>0)
+			self.parser.put(condition)
+			condition = "#"
+		if "#=+-".find(condition) < 0:									# validate it
+			raise AssemblerException("Unknown condition on structure "+condition)
+		condition = "=#-+"["#=+-".find(condition)]						# reverse it, skip if not true
+		loopAddress = self.codeGenerator.getAddress()					# top loop for while
+		self.parser.expect("(")											# do the condition
+		self.expressionCompiler.compile()
+		self.parser.expect(")")
+		jumpAddress = self.codeGenerator.compileJump(condition)			# jump if failed.
+		self.compile()													# compile the instruction
+		if not isIf:													# for while
+			loopJump = self.codeGenerator.compileJump("") 				# go back to the top.
+			self.codeGenerator.patchJump(loopJump,loopAddress)
+																		# patch the 'skip over'
+		self.codeGenerator.patchJump(jumpAddress,self.codeGenerator.getAddress())
+	#
+	#		Compile FOR loop
+	#
+	def forLoop(self):
+		self.parser.expect("(")											# do the count.
+		self.expressionCompiler.compile()									
+		self.parser.expect(")")
+		index = self.dictionary.find("index")							# do we have an index
+		if index is not None:
+			if not isinstance(index,AddressIdentifier):
+				raise AssemblerException("Cannot use index as defined")
+																		# Top of loop
+		forLoop = self.codeGenerator.forTopCode(index.getValue() if index is not None else None)
+		self.compile()													# code that's repeated
+		self.codeGenerator.forBottomCode(forLoop)						# bottom of loop.
 
 if __name__ == "__main__":
 	tas = TextArrayStream("""
-		{ locvar = 1;;; glbvar = const1; }
+		{ locvar = 13;;; glbvar = const1; }
 		glbvar = locvar + 4;
 		locvar!4 = 2;
 		locvar?glbvar = 3;
 		hello(3,locvar!4,const1);
+		if (locvar) { locvar = locvar + 12; }
+		while- (glbvar) { glbvar = glbvar - const1; }
+		{ for (locvar) { hello(0,0,0); } ; glbvar = 142; }
 	""".split("\n"))
 
 	tx = InstructionCompiler(ElementParser(tas),DemoCodeGenerator(),TestDictionary())
+	tx.compile()
+	print("================================")
+	tx.compile()
+	print("================================")
+	tx.compile()
+	print("================================")
 	tx.compile()
 	print("================================")
 	tx.compile()

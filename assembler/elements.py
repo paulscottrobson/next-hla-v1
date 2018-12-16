@@ -25,19 +25,19 @@ class ElementParser(object):
 	#		Get the next element
 	#
 	def get(self):
-		if len(self.elementQueue) > 0:
+		if len(self.elementQueue) > 0:									# If something put back use that
 			element = self.elementQueue[0]
 			self.elementQueue = self.elementQueue[1:]
 			return element
-		ch = self.stream.get().lower()
-		if ch == " ":
+		ch = self.stream.get().lower()									# Get first character
+		if ch == " ":													# skip over spaces using recursion
 			return self.get()
 		#
 		#		Quoted string
 		#
-		if ch == '"':
+		if ch == '"':													# "<string>"
 			string = ""
-			ch = self.stream.get()
+			ch = self.stream.get()										# rip the string out.
 			while ch != '"':
 				if ch == "":
 					raise AssemblerException("Missing closing quote for string")
@@ -47,8 +47,8 @@ class ElementParser(object):
 		#
 		#		Integer
 		#
-		if ch >= '0' and ch <= '9':
-			n = int(ch,10)
+		if ch >= '0' and ch <= '9':										# decimal integer
+			n = int(ch,10)												# rip and convert
 			ch = self.stream.get()
 			while ch >= "0" and ch <= "9":
 				n = (n * 10 + int(ch,10)) & 0xFFFF
@@ -58,7 +58,7 @@ class ElementParser(object):
 		#
 		#		Hex Integer
 		#
-		if ch == '$':
+		if ch == '$':													# hexadecimal integer
 			word = ""
 			ch = self.stream.get().lower()
 			while (ch >= '0' and ch <= '9') or (ch >= 'a') and (ch <= 'f'):
@@ -69,23 +69,23 @@ class ElementParser(object):
 		#
 		#		Identifier
 		#
-		if (ch >= 'a' and ch <= 'z') or ch == '_':
+		if (ch >= 'a' and ch <= 'z') or ch == '_':						# identifier
 			ident = ch
-			ch = self.stream.get().lower()
+			ch = self.stream.get().lower()								# get the full identifier
 			while (ch >= 'a' and ch <= 'z') or (ch >= '0' and ch <= '9') or ch == '.' or ch == '_' or ch == ':':
 				ident = ident + ch
 				ch = self.stream.get().lower()
-			self.stream.put(ch)
+			self.stream.put(ch)											# put back the unknown
 			return ident
 		#
 		#		Quoted string
 		#
-		if ch == "'":
+		if ch == "'":													# single character
 			char = self.stream.get()
 			ch = self.stream.get()
 			if ch != "'":
 				raise AssemblerException("")
-			return str(ord(char))
+			return str(ord(char))										# we convert it to an integer
 		return ch	
 
 	#
@@ -94,7 +94,7 @@ class ElementParser(object):
 	def put(self,element):
 		self.elementQueue.insert(0,element)
 	#
-	#		Test the next element
+	#		Test the next element to see if it's what we want.
 	#
 	def expect(self,element):
 		if self.get() != element.lower():

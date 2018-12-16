@@ -23,10 +23,10 @@ class Stream(object):
 	#		Next character get
 	#
 	def get(self):
-		if self.inQueue is not None:
+		if self.inQueue is not None:									# Single character put back
 			ch = self.inQueue
 			self.inQueue = None 
-		else:
+		else:															# if empty, use raw method
 			ch = self.getRaw()
 		return ch 
 	#

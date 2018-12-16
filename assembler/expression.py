@@ -28,14 +28,14 @@ class ExpressionCompiler(object):
 		self.termExtractor = TermExtractor(parser,codeGenerator,dictionary)
 
 	def compile(self):
-		firstTerm = self.termExtractor.extract()
-		self.codeGenerator.loadARegister(firstTerm)
-		operator = self.parser.get()
-		while len(operator) == 1 and "+-*%!?&|^>=<#".find(operator) >= 0:
-			secondTerm = self.termExtractor.extract()
-			self.codeGenerator.binaryOperation(operator,secondTerm)
-			operator = self.parser.get()
-		self.parser.put(operator)
+		firstTerm = self.termExtractor.extract()						# Get first term
+		self.codeGenerator.loadARegister(firstTerm)						# Load in code
+		operator = self.parser.get()									# See what's next
+		while len(operator) == 1 and "+-*%!?&|^".find(operator) >= 0:	# Is it a known operator
+			secondTerm = self.termExtractor.extract()					# Get the second term
+			self.codeGenerator.binaryOperation(operator,secondTerm)		# Do the operation
+			operator = self.parser.get() 								# See what follows
+		self.parser.put(operator)										# Put unknown element back
 		
 if __name__ == "__main__":
 	tas = TextArrayStream("""

@@ -36,8 +36,8 @@ class Identifier(object):
 
 class ConstantIdentifier(Identifier):
 	def __init__(self,name,value):
-		Identifier.__init__(self,name,value,True)
-	def getTypeName(self):
+		Identifier.__init__(self,name,value,True)						# Constants global
+	def getTypeName(self):	
 		return "ConstantIdentifier"
 
 # ***************************************************************************************
@@ -53,6 +53,11 @@ class AddressIdentifier(Identifier):
 # ***************************************************************************************
 
 class VariableIdentifier(AddressIdentifier):
+	def __init__(self,name,value,dataType = None,isGlobal = True):
+		AddressIdentifier.__init__(self,name,value,isGlobal)
+		self.varType = dataType
+	def getVariableType(self):
+		return self.varType
 	def getTypeName(self):
 		return "VariableIdentifier"
 

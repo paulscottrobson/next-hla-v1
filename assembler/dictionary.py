@@ -24,18 +24,18 @@ class Dictionary(object):
 	#	Add an identifier to the dictionary.
 	#
 	def add(self,identifier):
-		target = self.globals if identifier.isGlobal() else self.locals
-		if identifier.getName() in target:
+		target = self.globals if identifier.isGlobal() else self.Locals # decide where its going
+		if identifier.getName() in target: 								# check for duplication
 			raise AssemblerException("Duplicate idenifier "+identifier.getName())
-		target[identifier.getName()] = identifier
+		target[identifier.getName()] = identifier 						# store
 	#
 	#	Get an identifier from the dictionary.
 	#
 	def find(self,identifier):
-		identifier = identifier.strip().lower()
-		if identifier in self.locals:
+		identifier = identifier.strip().lower()							# get ID
+		if identifier in self.locals: 									# locals have priority
 			return self.locals[identifier]
-		if identifier in self.globals:
+		if identifier in self.globals:									# over globals
 			return self.globals[identifier]
 		return None
 	#
@@ -53,6 +53,10 @@ class Dictionary(object):
 		keys = [x for x in dict.keys()]
 		keys.sort()
 		return "\n".join(["\t{0}".format(dict[x].toString()) for x in keys])+"\n"
+
+# ***************************************************************************************
+#						This class has made up test data for testing
+# ***************************************************************************************
 
 class TestDictionary(Dictionary):
 	def __init__(self):

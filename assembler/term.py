@@ -17,7 +17,7 @@ from democodegen import *
 import os,re
 
 # ***************************************************************************************
-#								Extract a term
+#						Extract a term. Returns [isAddress,address]
 # ***************************************************************************************
 
 class TermExtractor(object):
@@ -49,7 +49,7 @@ class TermExtractor(object):
 		#		Constant integer. Also hex and 'character', the parser handles this.
 		#
 		if element[0] >= '0' and element[0] <= '9':
-			return [False,int(element[0])]
+			return [False,int(element,10)]
 		#
 		#		Identifier.
 		#
@@ -87,7 +87,7 @@ class TermExtractor(object):
 
 if __name__ == "__main__":
 	tas = TextArrayStream("""
-		$7FFE 65321 'x' -4
+		$7FFE 65321 'x' -4 38
 		locvar glbvar const1 -const1
 		"hello world"
 		// String
